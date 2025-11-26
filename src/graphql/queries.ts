@@ -79,6 +79,26 @@ export const UPDATE_MODEL_POSITION = gql`
   }
 `;
 
+export const INSTALL_WIDGET = gql`
+  mutation InstallWidget($storeId: String!, $widgetId: String!) {
+    installWidget(storeId: $storeId, widgetId: $widgetId) {
+      id
+      name
+      description
+      imageUrl
+      activeUserCount
+      installedWidgetId
+      models {
+        name
+        glbUrl
+        position
+        size
+        entranceOrder
+      }
+    }
+  }
+`;
+
 // Subscription
 export const STORE_UPDATED = gql`
   subscription StoreUpdated($storeId: String!) {
@@ -88,6 +108,7 @@ export const STORE_UPDATED = gql`
       description
       imageUrl
       activeUserCount
+      installedWidgetId
       models {
         name
         glbUrl

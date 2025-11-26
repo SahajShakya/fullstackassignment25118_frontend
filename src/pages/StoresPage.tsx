@@ -42,7 +42,7 @@ export function StoresPage() {
   };
 
   const handleModelDragEnd = (modelName: string, newPosition: [number, number]) => {
-    // Call your updateModelPosition mutation here
+
     console.log('New position:', modelName, newPosition);
   };
 

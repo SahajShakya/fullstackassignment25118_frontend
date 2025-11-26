@@ -10,7 +10,6 @@ import type { GetStoresResponse } from '@/types/stores';
 import { Button } from '@/components/ui/button';
 import { ENTER_STORE, EXIT_STORE, UPDATE_MODEL_POSITION } from '@/graphql/queries';
 
-// Helper function to decode JWT and extract user_id
 function extractUserIdFromToken(token: string): string | null {
   try {
     const parts = token.split('.');
@@ -55,14 +54,11 @@ export function StorePage() {
   const { accessToken } = useUserContext();
   const [storeFullError, setStoreFullError] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
-  
-  // Use subscription for real-time updates instead of polling
   const { data: subscriptionData, loading, error } = useSubscription<StoreUpdatedResponse>(STORE_UPDATED, {
     variables: { storeId: storeId! },
     skip: !storeId,
   });
 
-  // Fallback to query if subscription doesn't work
   useQuery<GetStoresResponse>(GET_ALL_STORES, {
     context: { headers: { Authorization: `Bearer ${accessToken}` } },
     skip: !storeId || !!subscriptionData?.storeUpdated,
@@ -80,13 +76,12 @@ export function StorePage() {
     context: { headers: { Authorization: `Bearer ${accessToken}` } },
   });
 
-  // Call enterStore on mount
   useEffect(() => {
     const handleEnter = async () => {
       try {
         // Get user_id from context
         const userIdFromContext = accessToken ? extractUserIdFromToken(accessToken) : null;
-        const userId = userIdFromContext || 'anonymous';
+        const userId = userIdFromContext
         
         const result = await enterStore({
           variables: { storeId: storeId!, userId },

@@ -17,11 +17,11 @@ export function HomePage() {
       <Card className="w-full max-w-md p-8">
         <div className="text-center space-y-6">
           <h1 className="text-3xl font-bold text-gray-800">
-            Welcome, {userName}! 👋
+            Hello, {userName}!
           </h1>
           
           <p className="text-gray-600">
-            You are successfully authenticated. You can now access the store visualization system.
+            Acess Store
           </p>
           
           <div className="space-y-3 pt-4">
@@ -30,6 +30,13 @@ export function HomePage() {
               onClick={() => navigate('/stores')}
             >
               Go to Stores
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full"
+               onClick={() => navigate('/widget')}
+            >
+              Got to Widget
             </Button>
             
             <Button

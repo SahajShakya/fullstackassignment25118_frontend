@@ -63,9 +63,6 @@ export function WidgetPage() {
   const widgets = widgetsData?.getAllWidgets || [];
   const analytics = analyticsData?.getAnalyticsSummary;
 
-  console.log('widgetsData:', widgetsData);
-  console.log('analyticsData:', analyticsData);
-
 
   useEffect(() => {
     if (selectedStoreId) {

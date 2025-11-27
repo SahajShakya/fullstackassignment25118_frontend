@@ -1,23 +1,23 @@
 import { useRef, useMemo, useEffect, useState, useCallback } from 'react';
-import { useLoader } from '@react-three/fiber';
-import { Mesh, Box3, Vector3 } from 'three';
+import { useLoader, useFrame } from '@react-three/fiber';
+import { Mesh, Box3, Vector3, AnimationMixer } from 'three';
 import { GLTFLoader } from 'three-stdlib';
 
 interface ModelProps {
   glbUrl: string;
   position: [number, number];
-  scale: [number, number, number];
+  scale?: [number, number, number];
   entranceOrder?: number;
-  modelIndex?: number;
   onDragEnd?: (newPosition: [number, number]) => void;
 }
 
-export function Model({ glbUrl, position, scale, modelIndex = 0, onDragEnd }: ModelProps) {
+export function Model({ glbUrl, position, onDragEnd }: ModelProps) {
   const meshRef = useRef<Mesh>(null);
   const gltf = useLoader(GLTFLoader, glbUrl);
   const [isDragging, setIsDragging] = useState(false);
+  const animationMixerRef = useRef<AnimationMixer | null>(null);
+  const animationPlayedRef = useRef(false);
 
-  // Clone the scene for each model instance to avoid reusing geometry
   const clonedScene = useMemo(() => {
     const clone = gltf.scene.clone();
     clone.traverse((child) => {
@@ -29,7 +29,6 @@ export function Model({ glbUrl, position, scale, modelIndex = 0, onDragEnd }: Mo
     return clone;
   }, [gltf.scene]);
 
-  // Auto-normalize model size based on bounding box
   const normalizedScale = useMemo(() => {
     const box = new Box3().setFromObject(clonedScene);
     const size = new Vector3();
@@ -38,21 +37,18 @@ export function Model({ glbUrl, position, scale, modelIndex = 0, onDragEnd }: Mo
     const maxDim = Math.max(size.x, size.y, size.z);
     const targetSize = 2;
     const scaleMultiplier = maxDim > 0 ? targetSize / maxDim : 1;
-    
-    console.log(`Model ${modelIndex} normalization:`, { maxDim, scaleMultiplier });
+  
     return scaleMultiplier;
-  }, [clonedScene, modelIndex]);
+  }, [clonedScene]);
 
   const baseScale: number = normalizedScale * 0.3;
 
-  // Convert 2D image coordinates to 3D world coordinates
   const convert2DTo3D = (imagePos: [number, number]): [number, number, number] => {
     const x3d = (imagePos[0] / 800) * 8 - 4;
     const z3d = (imagePos[1] / 600) * 6 - 3;
     return [x3d, 0.2, z3d];
   };
 
-  // Convert 3D coordinates back to 2D image coordinates
   const convert3DTo2D = useCallback((pos3d: [number, number, number]): [number, number] => {
     const imageX = ((pos3d[0] + 4) / 8) * 800;
     const imageY = ((pos3d[2] + 3) / 6) * 600;
@@ -61,19 +57,33 @@ export function Model({ glbUrl, position, scale, modelIndex = 0, onDragEnd }: Mo
 
   const position3D = convert2DTo3D(position);
 
-  // Set initial position and scale
   useEffect(() => {
     if (meshRef.current) {
       meshRef.current.position.set(position3D[0], position3D[1], position3D[2]);
       meshRef.current.scale.set(baseScale, baseScale, baseScale);
+
+      if (!animationPlayedRef.current && gltf.animations && gltf.animations.length > 0) {
+        const mixer = new AnimationMixer(meshRef.current);
+        animationMixerRef.current = mixer;
+                gltf.animations.forEach((clip) => {
+          mixer.clipAction(clip).play();
+        });
+        
+        animationPlayedRef.current = true;
+      }
     }
-  }, [baseScale, position3D]);
+  }, [baseScale, position3D, gltf.animations]);
 
   const handlePointerDown = () => {
     setIsDragging(true);
   };
 
-  // Add event listeners
+  useFrame(() => {
+    if (animationMixerRef.current) {
+      animationMixerRef.current.update(0.016); // ~60fps
+    }
+  });
+
   useEffect(() => {
     if (!isDragging) return;
 

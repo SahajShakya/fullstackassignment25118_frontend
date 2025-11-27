@@ -25,14 +25,7 @@ export function WidgetDisplay({ widget, onChangeWidget }: WidgetDisplayProps) {
     e.stopPropagation();
     
     try {
-      console.log('[WidgetDisplay] Domain link clicked, tracking link_clicked event', {
-        storeId: widget.storeId,
-        domain: widget.domain,
-        eventType: 'link_clicked'
-      });
-      
-      // Track the link click event
-      const result = await trackEvent({
+      await trackEvent({
         variables: {
           storeId: widget.storeId,
           domain: widget.domain,
@@ -41,27 +34,16 @@ export function WidgetDisplay({ widget, onChangeWidget }: WidgetDisplayProps) {
         },
       });
       
-      console.log('[WidgetDisplay] Link click tracked', result.data);
-      
-      // Open domain in new tab
       window.open(`https://${widget.domain}`, '_blank');
     } catch (error) {
       console.error('Error tracking link click:', error);
-      // Still open link even if tracking fails
       window.open(`https://${widget.domain}`, '_blank');
     }
   };
 
   const handleVideoClick = async () => {
     try {
-      console.log('[WidgetDisplay] Video clicked, tracking video_loaded event', {
-        storeId: widget.storeId,
-        domain: widget.domain,
-        eventType: 'video_loaded'
-      });
-      
-      // Track the video play event
-      const result = await trackEvent({
+      await trackEvent({
         variables: {
           storeId: widget.storeId,
           domain: widget.domain,
@@ -70,9 +52,6 @@ export function WidgetDisplay({ widget, onChangeWidget }: WidgetDisplayProps) {
         },
       });
       
-      console.log('[WidgetDisplay] Video play tracked', result.data);
-      
-      // Hide the overlay after click
       if (overlayRef.current) {
         overlayRef.current.style.display = 'none';
       }
@@ -98,7 +77,6 @@ export function WidgetDisplay({ widget, onChangeWidget }: WidgetDisplayProps) {
         </p>
       </div>
 
-      {/* Video Container */}
       <div className="relative w-full h-96 bg-gray-900 rounded-lg overflow-hidden group">
         <iframe
           width="100%"
@@ -109,7 +87,6 @@ export function WidgetDisplay({ widget, onChangeWidget }: WidgetDisplayProps) {
           allow="autoplay"
           style={{ border: 'none' }}
         />
-        {/* Click overlay to track plays */}
         <div
           ref={overlayRef}
           className="absolute inset-0 bg-black/0 hover:bg-black/10 transition-colors cursor-pointer"

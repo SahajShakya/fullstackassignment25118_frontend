@@ -12,6 +12,7 @@ import type { GetWidgetByIdResponse } from '@/types/widget';
 import { Button } from '@/components/ui/button';
 import { ENTER_STORE, EXIT_STORE, UPDATE_MODEL_POSITION } from '@/graphql/queries';
 import { WidgetDisplay } from '@/components/WidgetDisplay';
+// import { Ground } from '@/components/Ground';
 
 function extractUserIdFromToken(token: string): string | null {
   try {
@@ -94,13 +95,6 @@ export function StorePage() {
       const widget = widgetQueryData.getWidgetById;
       const store = subscriptionData.storeUpdated;
       
-      console.log('[StorePage] Widget loaded, tracking event (first time only)', {
-        storeId: store.id,
-        domain: widget.domain,
-        eventType: 'page_view'
-      });
-      
-      // Mark as tracked
       widgetLoadTrackedRef.current = true;
       
       trackEvent({
@@ -127,7 +121,6 @@ export function StorePage() {
         const backendSessionId = result.data?.enterStore?.sessionId;
         if (backendSessionId) {
           setSessionId(backendSessionId);
-          console.log('Successfully entered store with session:', backendSessionId);
         } else {
           console.error('No session ID returned from server');
         }
@@ -156,10 +149,9 @@ export function StorePage() {
   if (!store) return <p>Store not found</p>;
 
   const handleModelDragEnd = async (modelName: string, newPosition: [number, number]) => {
-    console.log('Model dropped:', modelName, 'at position:', newPosition);
     try {
       const userIdFromToken = accessToken ? extractUserIdFromToken(accessToken) : null;
-      const userId = userIdFromToken || 'anonymous';
+      const userId = userIdFromToken
       
       const result = await updateModelPosition({
         variables: {
@@ -228,10 +220,11 @@ export function StorePage() {
             <pointLight position={[5, -5, 5]} intensity={1} />
             <hemisphereLight intensity={0.5} />
 
-            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -1, 0]} receiveShadow>
+            {/* <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -1, 0]} receiveShadow>
               <planeGeometry args={[20, 20]} />
               <meshStandardMaterial color="#1a1a1a" transparent opacity={0} />
-            </mesh>
+            </mesh> */}
+
 
             <Suspense fallback={null}>
               {store.models.map((model) => (
@@ -239,8 +232,6 @@ export function StorePage() {
                   key={`${model.name}-${model.position[0]}-${model.position[1]}`}
                   glbUrl={model.glbUrl}
                   position={model.position}
-                  scale={model.size}
-                  modelIndex={store.models.indexOf(model)}
                   onDragEnd={(newPos: [number, number]) =>
                     handleModelDragEnd(model.name, newPos)
                   }

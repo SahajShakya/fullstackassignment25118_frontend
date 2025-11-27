@@ -25,8 +25,6 @@ export function StoresPage() {
     context: { headers: { Authorization: `Bearer ${accessToken}` } },
   });
 
-  console.log(data)
-
   const [selectedStoreId, setSelectedStoreId] = useState<string | null>(null);
 
   const selectedStore = data?.getAllStores?.find((s) => s.id === selectedStoreId) 
@@ -38,11 +36,6 @@ export function StoresPage() {
 
   const handleStoreChange = (storeId: string) => {
     setSelectedStoreId(storeId);
-  };
-
-  const handleModelDragEnd = (modelName: string, newPosition: [number, number]) => {
-
-    console.log('New position:', modelName, newPosition);
   };
 
   return (
@@ -95,9 +88,10 @@ export function StoresPage() {
               </div>
               <Button
                 onClick={() => navigate(`/store/${selectedStore.id}`)}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2"
+                disabled={selectedStore.activeUserCount >= 2}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
-                Enter Store
+                {selectedStore.activeUserCount >= 2 ? 'Store Full' : 'Enter Store'}
               </Button>
             </div>
           )}
@@ -135,8 +129,7 @@ export function StoresPage() {
               <hemisphereLight intensity={1} />
 
               <Suspense fallback={null}>
-                {selectedStore.models.map((model, index) => {
-                  console.log(`Rendering model ${index}:`, model.name, model.position, model.entranceOrder);
+                {selectedStore.models.map((model) => {
                   return (
                     <Model
                       key={model.name}
@@ -144,10 +137,7 @@ export function StoresPage() {
                       position={model.position}
                       scale={model.size}
                       entranceOrder={model.entranceOrder}
-                      modelIndex={index}
-                      onDragEnd={(newPos: [number, number]) =>
-                        handleModelDragEnd(model.name, newPos)
-                      }
+                      // modelIndex={index}
                     />
                   );
                 })}

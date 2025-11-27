@@ -88,6 +88,7 @@ export const INSTALL_WIDGET = gql`
       imageUrl
       activeUserCount
       installedWidgetId
+      installedWidgetDomain
       models {
         name
         glbUrl
@@ -109,6 +110,7 @@ export const STORE_UPDATED = gql`
       imageUrl
       activeUserCount
       installedWidgetId
+      installedWidgetDomain
       models {
         name
         glbUrl

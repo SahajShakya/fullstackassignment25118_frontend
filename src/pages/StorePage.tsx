@@ -6,9 +6,12 @@ import { Canvas } from '@react-three/fiber';
 import { Suspense, useEffect, useState } from 'react';
 import { Model } from '@/model/Model';
 import { GET_ALL_STORES, STORE_UPDATED } from '@/graphql/queries';
+import { GET_WIDGET_BY_ID } from '@/graphql/widgetQueries';
 import type { GetStoresResponse } from '@/types/stores';
+import type { GetWidgetByIdResponse } from '@/types/widget';
 import { Button } from '@/components/ui/button';
 import { ENTER_STORE, EXIT_STORE, UPDATE_MODEL_POSITION } from '@/graphql/queries';
+import { WidgetDisplay } from '@/components/WidgetDisplay';
 
 function extractUserIdFromToken(token: string): string | null {
   try {
@@ -38,6 +41,8 @@ interface StoreUpdatedResponse {
     description: string;
     imageUrl: string;
     activeUserCount: number;
+    installedWidgetId?: string;
+    installedWidgetDomain?: string;
     models: Array<{
       name: string;
       glbUrl: string;
@@ -52,11 +57,16 @@ export function StorePage() {
   const { storeId } = useParams<{ storeId: string }>();
   const navigate = useNavigate();
   const { accessToken } = useUserContext();
-  const [storeFullError, setStoreFullError] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const { data: subscriptionData, loading, error } = useSubscription<StoreUpdatedResponse>(STORE_UPDATED, {
+  
+  const { data: subscriptionData } = useSubscription<StoreUpdatedResponse>(STORE_UPDATED, {
     variables: { storeId: storeId! },
     skip: !storeId,
+  });
+
+  const { data: widgetQueryData } = useQuery<GetWidgetByIdResponse>(GET_WIDGET_BY_ID, {
+    variables: { widgetId: subscriptionData?.storeUpdated?.installedWidgetId },
+    skip: !subscriptionData?.storeUpdated?.installedWidgetId,
   });
 
   useQuery<GetStoresResponse>(GET_ALL_STORES, {
@@ -97,8 +107,7 @@ export function StorePage() {
         }
       } catch (err) {
         console.error('Error entering store:', err);
-        setStoreFullError(true);
-        // Redirect after 2 seconds
+        // Redirect after 2 seconds if store is full or error
         setTimeout(() => navigate('/stores'), 2000);
       }
     };
@@ -112,27 +121,15 @@ export function StorePage() {
       if (storeId && sessionId) {
         exitStore({
           variables: { storeId: storeId, sessionId: sessionId },
-        }).catch((err) => console.error('Error exiting store:', err));
+        }).catch((err: Error) => console.error('Error exiting store:', err));
       }
     };
   }, [storeId, enterStore, exitStore, navigate, sessionId, accessToken]);
 
-  if (loading) return <p>Loading store...</p>;
-  if (error) return <p>Error loading store</p>;
+  if (!subscriptionData?.storeUpdated) return <p>Loading store...</p>;
   
   const store = subscriptionData?.storeUpdated;
   if (!store) return <p>Store not found</p>;
-  if (storeFullError) {
-    return (
-      <div className="min-h-screen bg-gray-900 p-8 flex items-center justify-center">
-        <Card className="bg-red-900 text-white p-8 max-w-md">
-          <h2 className="text-2xl font-bold mb-4">Store Full</h2>
-          <p className="mb-4">This store already has 2 users. Please try again later.</p>
-          <p className="text-sm text-gray-300">Redirecting...</p>
-        </Card>
-      </div>
-    );
-  }
 
   const handleModelDragEnd = async (modelName: string, newPosition: [number, number]) => {
     console.log('Model dropped:', modelName, 'at position:', newPosition);
@@ -162,7 +159,7 @@ export function StorePage() {
           <h1 className="text-4xl font-bold text-white mb-2">{store.name}</h1>
           <p className="text-gray-400">{store.description}</p>
           <p className="text-sm text-yellow-400 mt-2">
-            👥 Users in store: {store.activeUserCount}/2
+            Users in store: {store.activeUserCount}/2
           </p>
         </div>
         <Button 
@@ -222,6 +219,7 @@ export function StorePage() {
                   key={`${model.name}-${model.position[0]}-${model.position[1]}`}
                   glbUrl={model.glbUrl}
                   position={model.position}
+                  scale={model.size}
                   modelIndex={store.models.indexOf(model)}
                   onDragEnd={(newPos: [number, number]) =>
                     handleModelDragEnd(model.name, newPos)
@@ -231,17 +229,39 @@ export function StorePage() {
             </Suspense>
           </Canvas>
 
-          {/* Info Overlay */}
-          <div className="absolute bottom-4 left-4 bg-black/70 text-white p-4 rounded-lg">
-            <p className="text-sm">
-              👉 Drag models to reposition | 🖱️ Right-click to rotate | 🔍 Scroll to zoom
-            </p>
-            <p className="text-xs text-yellow-400 mt-2">
-              {store.activeUserCount > 1 ? '🔄 Other user(s) present - changes sync in real-time' : '👤 You are alone in this store'}
-            </p>
-          </div>
+
         </Card>
       )}
+
+      {/* Widget Section */}
+      <div className="mt-8">
+        <h2 className="text-2xl font-bold text-white mb-4">Installed Widget</h2>
+        
+        {store.installedWidgetId && widgetQueryData?.getWidgetById ? (
+          <Card className="p-6 bg-black border-gray-700">
+            <WidgetDisplay 
+              widget={widgetQueryData.getWidgetById}
+              onChangeWidget={() => navigate('/widgets')}
+            />
+          </Card>
+        ) : store.installedWidgetId ? (
+          <Card className="p-6 bg-black border-gray-700">
+            <p className="text-gray-400">Loading widget...</p>
+          </Card>
+        ) : (
+          <Card className="p-6 bg-gray-800 border-gray-700">
+            <p className="text-gray-300 mb-4">
+              No widget installed yet. Browse and install a widget to display it here.
+            </p>
+            <Button 
+              onClick={() => navigate('/widgets')}
+              className="bg-white text-black hover:bg-gray-200"
+            >
+              Browse Widgets
+            </Button>
+          </Card>
+        )}
+      </div>
     </div>
   );
 }

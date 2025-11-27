@@ -135,11 +135,11 @@ export function WidgetPage() {
     setError('');
   };
 
-  const copyCode = () => {
-    navigator.clipboard.writeText(
-      `<script src="http://localhost:8000/widget/index.js" data-store-id="${storeId}"></script>`
-    );
-  };
+  // const copyCode = () => {
+  //   navigator.clipboard.writeText(
+  //     `<script src="http://localhost:8000/widget/index.js" data-store-id="${storeId}"></script>`
+  //   );
+  // };
 
   return (
     <div className="min-h-screen bg-background p-8">
@@ -170,7 +170,7 @@ export function WidgetPage() {
           </div>
         )}
 
-        {/* Embed Code */}
+        {/* Embed Code
         <Card className="p-6 mb-8">
           <div className="block mb-2 font-medium">Embed Code</div>
           <div className="flex gap-2">
@@ -179,9 +179,8 @@ export function WidgetPage() {
             </code>
             <Button onClick={copyCode}>Copy</Button>
           </div>
-        </Card>
+        </Card> */}
 
-        {/* Create/Edit Form */}
         {showForm ? (
           <Card className="p-6 mb-8">
             {error && <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded mb-4">{error}</div>}

@@ -14,6 +14,8 @@ export interface Store {
   models: Model[];
   activeUserCount: number;
   canEnter: boolean;
+  installedWidgetId?: string;
+  installedWidgetDomain?: string;
 }
 
 export interface GetStoresResponse {

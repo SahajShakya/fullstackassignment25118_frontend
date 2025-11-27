@@ -30,3 +30,7 @@ export interface CreateWidgetResponse {
 export interface UpdateWidgetResponse {
   updateWidget: WidgetConfig;
 }
+
+export interface GetWidgetByIdResponse {
+  getWidgetById: WidgetConfig;
+}

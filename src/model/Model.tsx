@@ -103,7 +103,6 @@ export function Model({ glbUrl, position, scale, modelIndex = 0, onDragEnd }: Mo
           meshRef.current.position.y,
           meshRef.current.position.z,
         ]);
-        console.log('Model dropped at 2D position:', newPos2D);
         onDragEnd(newPos2D);
       }
     };

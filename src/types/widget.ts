@@ -19,8 +19,16 @@ export interface GetWidgetsByStoreResponse {
   getWidgetsByStore: WidgetConfig[];
 }
 
+export interface GetAllWidgetsResponse {
+  getAllWidgets: WidgetConfig[];
+}
+
 export interface GetAnalyticsSummaryResponse {
   getAnalyticsSummary: AnalyticsSummary;
+}
+
+export interface GetAnalyticsByDomainResponse {
+  getAnalyticsByDomain: AnalyticsSummary;
 }
 
 export interface CreateWidgetResponse {

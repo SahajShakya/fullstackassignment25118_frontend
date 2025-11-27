@@ -31,12 +31,14 @@ export const UPDATE_WIDGET = gql`
     $videoUrl: String
     $bannerText: String
     $isActive: Boolean
+    $storeId: String
   ) {
     updateWidget(
       widgetId: $widgetId
       videoUrl: $videoUrl
       bannerText: $bannerText
       isActive: $isActive
+      storeId: $storeId
     ) {
       id
       storeId

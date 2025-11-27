@@ -1,14 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@apollo/client/react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { GET_WIDGETS_BY_STORE, GET_ANALYTICS_SUMMARY } from '@/graphql/widgetQueries';
+import { AnalyticsMetricCard } from '@/components/AnalyticsMetricCard';
+import { GET_ANALYTICS_SUMMARY, GET_ALL_WIDGETS } from '@/graphql/widgetQueries';
 import { CREATE_WIDGET, UPDATE_WIDGET, DELETE_WIDGET } from '@/graphql/widgetMutations';
-import { useUserContext } from '@/hooks/useUserContext';
-import type { GetWidgetsByStoreResponse, GetAnalyticsSummaryResponse, CreateWidgetResponse, WidgetConfig } from '@/types/widget';
+import { GET_ALL_STORES } from '@/graphql/queries';
+import type { GetAllWidgetsResponse, GetAnalyticsSummaryResponse, CreateWidgetResponse, WidgetConfig } from '@/types/widget';
+import type { GetStoresResponse } from '@/types/stores';
 
 interface CreateWidgetInput {
   domain: string;
@@ -18,57 +20,65 @@ interface CreateWidgetInput {
 
 export function WidgetPage() {
   const navigate = useNavigate();
-  const { accessToken } = useUserContext();
-  const storeId = 'default'; // Using a fixed store ID for now
+  const [selectedStoreId, setSelectedStoreId] = useState<string | null>(null);
   
   const [showForm, setShowForm] = useState(false);
   const [error, setError] = useState<string>('');
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingWidgetStoreId, setEditingWidgetStoreId] = useState<string | null>(null);
   const [formData, setFormData] = useState<CreateWidgetInput>({
     domain: '',
     videoUrl: '',
     bannerText: '',
   });
 
-  // Queries
-  const { data: widgetsData, loading, refetch } = useQuery<GetWidgetsByStoreResponse>(
-    GET_WIDGETS_BY_STORE,
-    {
-      variables: { storeId },
-      context: { headers: { Authorization: `Bearer ${accessToken}` } },
-    }
+  const { data: storesData } = useQuery<GetStoresResponse>(GET_ALL_STORES);
+
+
+  const stores = storesData?.getAllStores || [];
+  if (stores.length > 0 && !selectedStoreId) {
+    setSelectedStoreId(stores[0].id);
+  }
+
+
+  const { data: widgetsData, refetch } = useQuery<GetAllWidgetsResponse>(
+    GET_ALL_WIDGETS
   );
 
-  const { data: analyticsData } = useQuery<GetAnalyticsSummaryResponse>(
+  const { data: analyticsData, refetch: refetchAnalytics } = useQuery<GetAnalyticsSummaryResponse>(
     GET_ANALYTICS_SUMMARY,
     {
-      variables: { storeId },
-      context: { headers: { Authorization: `Bearer ${accessToken}` } },
+      variables: { storeId: selectedStoreId! },
+      skip: !selectedStoreId,
     }
   );
 
-  // Mutations
-  const [createWidget, { loading: createLoading }] = useMutation<CreateWidgetResponse>(CREATE_WIDGET, {
-    context: { headers: { Authorization: `Bearer ${accessToken}` } },
-  });
 
-  const [updateWidget] = useMutation(UPDATE_WIDGET, {
-    context: { headers: { Authorization: `Bearer ${accessToken}` } },
-  });
+  const [createWidget, { loading: createLoading }] = useMutation<CreateWidgetResponse>(CREATE_WIDGET);
 
-  const [deleteWidget] = useMutation(DELETE_WIDGET, {
-    context: { headers: { Authorization: `Bearer ${accessToken}` } },
-  });
+  const [updateWidget] = useMutation(UPDATE_WIDGET);
 
-  const widgets = widgetsData?.getWidgetsByStore || [];
+  const [deleteWidget] = useMutation(DELETE_WIDGET);
+
+  const widgets = widgetsData?.getAllWidgets || [];
   const analytics = analyticsData?.getAnalyticsSummary;
+
+  console.log('widgetsData:', widgetsData);
+  console.log('analyticsData:', analyticsData);
+
+
+  useEffect(() => {
+    if (selectedStoreId) {
+      refetchAnalytics();
+    }
+  }, [selectedStoreId, refetchAnalytics]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     
     if (!formData.domain || !formData.videoUrl) {
-      setError('Please fill in all required fields');
+      setError('No data field');
       return;
     }
 
@@ -80,14 +90,15 @@ export function WidgetPage() {
             widgetId: editingId,
             videoUrl: formData.videoUrl,
             bannerText: formData.bannerText,
+            storeId: editingWidgetStoreId,
           },
         });
         setEditingId(null);
+        setEditingWidgetStoreId(null);
       } else {
-        // Create new widget
         await createWidget({
           variables: {
-            storeId,
+            storeId: selectedStoreId!,
             domain: formData.domain,
             videoUrl: formData.videoUrl,
             bannerText: formData.bannerText,
@@ -111,11 +122,12 @@ export function WidgetPage() {
       bannerText: widget.bannerText,
     });
     setEditingId(widget.id);
+    setEditingWidgetStoreId(widget.storeId);
     setShowForm(true);
   };
 
   const handleDelete = async (widgetId: string) => {
-    if (!confirm('Are you sure you want to delete this widget?')) return;
+    if (!confirm('Delete?')) return;
     
     try {
       await deleteWidget({
@@ -123,7 +135,7 @@ export function WidgetPage() {
       });
       refetch();
     } catch (err) {
-      console.error('Error deleting widget:', err);
+      console.error('Error while deleting:', err);
       setError('Failed to delete widget');
     }
   };
@@ -131,55 +143,43 @@ export function WidgetPage() {
   const handleCancel = () => {
     setShowForm(false);
     setEditingId(null);
+    setEditingWidgetStoreId(null);
     setFormData({ domain: '', videoUrl: '', bannerText: '' });
     setError('');
   };
 
-  // const copyCode = () => {
-  //   navigator.clipboard.writeText(
-  //     `<script src="http://localhost:8000/widget/index.js" data-store-id="${storeId}"></script>`
-  //   );
-  // };
-
   return (
     <div className="min-h-screen bg-background p-8">
       <div className="max-w-4xl mx-auto">
-        {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Widgets</h1>
+          <h1 className="text-3xl font-bold mb-4">Widgets</h1>
+          <div className="flex items-center gap-4 mb-4">
+            <Label>Store:</Label>
+            <select 
+              value={selectedStoreId || ''} 
+              onChange={(e) => setSelectedStoreId(e.target.value)}
+              className="px-3 py-2 border border-input bg-background rounded-md text-sm"
+            >
+              <option value="">Select a store...</option>
+              {stores.map((store) => (
+                <option key={store.id} value={store.id}>
+                  {store.name}
+                </option>
+              ))}
+            </select>
+          </div>
           <Button variant="outline" onClick={() => navigate('/stores')}>
             Back
           </Button>
         </div>
 
-        {/* Analytics */}
         {analytics && (
           <div className="grid grid-cols-3 gap-4 mb-8">
-            <Card className="p-4">
-              <p className="text-sm text-muted-foreground">Page Views</p>
-              <p className="text-2xl font-bold">{analytics.pageView}</p>
-            </Card>
-            <Card className="p-4">
-              <p className="text-sm text-muted-foreground">Videos Loaded</p>
-              <p className="text-2xl font-bold">{analytics.videoLoaded}</p>
-            </Card>
-            <Card className="p-4">
-              <p className="text-sm text-muted-foreground">Links Clicked</p>
-              <p className="text-2xl font-bold">{analytics.linkClicked}</p>
-            </Card>
+            <AnalyticsMetricCard label="Page Views" value={analytics.pageView} />
+            <AnalyticsMetricCard label="Videos Loaded" value={analytics.videoLoaded} />
+            <AnalyticsMetricCard label="Links Clicked" value={analytics.linkClicked} />
           </div>
         )}
-
-        {/* Embed Code
-        <Card className="p-6 mb-8">
-          <div className="block mb-2 font-medium">Embed Code</div>
-          <div className="flex gap-2">
-            <code className="flex-1 bg-muted p-3 rounded text-sm break-all">
-              &lt;script src="http://localhost:8000/widget/index.js" data-store-id="{storeId}"&gt;&lt;/script&gt;
-            </code>
-            <Button onClick={copyCode}>Copy</Button>
-          </div>
-        </Card> */}
 
         {showForm ? (
           <Card className="p-6 mb-8">
@@ -188,27 +188,44 @@ export function WidgetPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               {!editingId && (
                 <div>
-                  <Label>Domain</Label>
+                  <Label>Domain name</Label>
                   <Input
-                    placeholder="example.com"
+                    placeholder="Domain.com"
                     value={formData.domain}
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, domain: e.target.value })}
                     disabled={!!editingId}
                   />
                 </div>
               )}
+              {editingId && (
+                <div>
+                  <Label>Store</Label>
+                  <select 
+                    value={editingWidgetStoreId || ''} 
+                    onChange={(e) => setEditingWidgetStoreId(e.target.value)}
+                    className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm"
+                  >
+                    <option value="">Select a store...</option>
+                    {stores.map((store) => (
+                      <option key={store.id} value={store.id}>
+                        {store.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div>
-                <Label>Video URL</Label>
+                <Label>Video url</Label>
                 <Input
-                  placeholder="http://..."
+                  placeholder="URL"
                   value={formData.videoUrl}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, videoUrl: e.target.value })}
                 />
               </div>
               <div>
-                <Label>Banner Text</Label>
+                <Label>Banner</Label>
                 <Input
-                  placeholder="Text..."
+                  placeholder="banner"
                   value={formData.bannerText}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, bannerText: e.target.value })}
                 />
@@ -229,16 +246,11 @@ export function WidgetPage() {
           </Button>
         )}
 
-        {/* Widgets List */}
-        <div className="space-y-2">
-          {loading ? (
-            <p className="text-muted-foreground">Loading...</p>
-          ) : widgets.length === 0 ? (
-            <p className="text-muted-foreground">No widgets yet</p>
-          ) : (
+        <div className="space-y-4">
+          {
             widgets.map((widget) => (
               <Card key={widget.id} className="p-4">
-                <div className="flex justify-between items-start">
+                <div className="flex justify-between items-start mb-3">
                   <div className="flex-1">
                     <p className="font-semibold">{widget.domain}</p>
                     <p className="text-sm text-muted-foreground">{widget.videoUrl}</p>
@@ -263,7 +275,7 @@ export function WidgetPage() {
                 </div>
               </Card>
             ))
-          )}
+          }
         </div>
       </div>
     </div>

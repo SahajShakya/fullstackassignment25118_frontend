@@ -33,11 +33,10 @@ export function StoresPage() {
     || data?.getAllStores?.[0] 
     || null;
 
-  if (loading) return <p>Loading stores...</p>;
-  if (error) return <p>Error loading stores</p>;
+  if (loading) return <p>Loading</p>;
+  if (error) return <p>Error </p>;
 
   const handleStoreChange = (storeId: string) => {
-    console.log(`✓ User entered store: ${storeId}`);
     setSelectedStoreId(storeId);
   };
 
@@ -107,14 +106,13 @@ export function StoresPage() {
 
       {selectedStore && (
         <Card className="relative w-full h-[600px] overflow-hidden bg-black">
-          {/* Store Image Background */}
+
           <img
             src={selectedStore.imageUrl}
             alt={selectedStore.name}
             className="absolute inset-0 w-full h-full object-cover"
           />
 
-          {/* 3D Models Canvas Overlay */}
           {selectedStore.models && selectedStore.models.length > 0 && (
             <Canvas
               style={{

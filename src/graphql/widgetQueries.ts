@@ -30,6 +30,21 @@ export const GET_WIDGETS_BY_STORE = gql`
   }
 `;
 
+export const GET_ALL_WIDGETS = gql`
+  query GetAllWidgets {
+    getAllWidgets {
+      id
+      storeId
+      domain
+      videoUrl
+      bannerText
+      isActive
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
 export const GET_ANALYTICS_SUMMARY = gql`
   query GetAnalyticsSummary($storeId: String!) {
     getAnalyticsSummary(storeId: $storeId) {
@@ -37,5 +52,33 @@ export const GET_ANALYTICS_SUMMARY = gql`
       videoLoaded
       linkClicked
     }
+  }
+`;
+
+export const GET_ANALYTICS_BY_DOMAIN = gql`
+  query GetAnalyticsByDomain($domain: String!) {
+    getAnalyticsByDomain(domain: $domain) {
+      pageView
+      videoLoaded
+      linkClicked
+    }
+  }
+`;
+
+export const TRACK_EVENT = gql`
+  mutation TrackEvent(
+    $storeId: String!
+    $domain: String!
+    $eventType: String!
+    $userAgent: String
+    $ipAddress: String
+  ) {
+    trackEvent(
+      storeId: $storeId
+      domain: $domain
+      eventType: $eventType
+      userAgent: $userAgent
+      ipAddress: $ipAddress
+    )
   }
 `;

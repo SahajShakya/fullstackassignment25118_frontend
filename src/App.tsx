@@ -6,6 +6,8 @@ import { PublicRoute } from './components/PublicRoute';
 import { HomePage } from './pages/HomePage';
 import { StoresPage } from './pages/StoresPage';
 import { StorePage } from './pages/StorePage';
+import { WidgetPage } from './pages/WidgetPage';
+import { WidgetsListPage } from './pages/WidgetsListPage';
 
 function App() {
   return (
@@ -51,6 +53,30 @@ function App() {
           element={
             <ProtectedRoute>
               <StorePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/widget"
+          element={
+            <ProtectedRoute>
+              <WidgetPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/widgets"
+          element={
+            <ProtectedRoute>
+              <WidgetsListPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/widgets/:storeId"
+          element={
+            <ProtectedRoute>
+              <WidgetsListPage />
             </ProtectedRoute>
           }
         />

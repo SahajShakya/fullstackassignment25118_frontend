@@ -1,27 +1,23 @@
 import { useRef, useMemo, useEffect, useState, useCallback } from 'react';
-import { useLoader } from '@react-three/fiber';
-import { Mesh, Box3, Vector3 } from 'three';
+import { useLoader, useFrame } from '@react-three/fiber';
+import { Mesh, Box3, Vector3, AnimationMixer } from 'three';
 import { GLTFLoader } from 'three-stdlib';
 
 interface ModelProps {
   glbUrl: string;
   position: [number, number];
+  scale?: [number, number, number];
   entranceOrder?: number;
-  modelIndex?: number;
   onDragEnd?: (newPosition: [number, number]) => void;
 }
 
-export function Model({ glbUrl, position, entranceOrder = 0, modelIndex = 0, onDragEnd }: ModelProps) {
+export function Model({ glbUrl, position, onDragEnd }: ModelProps) {
   const meshRef = useRef<Mesh>(null);
   const gltf = useLoader(GLTFLoader, glbUrl);
   const [isDragging, setIsDragging] = useState(false);
-  const animationStartTimeRef = useRef<number | null>(null);
+  const animationMixerRef = useRef<AnimationMixer | null>(null);
+  const animationPlayedRef = useRef(false);
 
-  // Animation timing (in milliseconds)
-  const ANIMATION_DELAY = entranceOrder * 300; // Stagger animations by 300ms each
-  const ANIMATION_DURATION = 800; // 800ms to move and scale up
-
-  // Clone the scene for each model instance to avoid reusing geometry
   const clonedScene = useMemo(() => {
     const clone = gltf.scene.clone();
     clone.traverse((child) => {
@@ -33,7 +29,6 @@ export function Model({ glbUrl, position, entranceOrder = 0, modelIndex = 0, onD
     return clone;
   }, [gltf.scene]);
 
-  // Auto-normalize model size based on bounding box
   const normalizedScale = useMemo(() => {
     const box = new Box3().setFromObject(clonedScene);
     const size = new Vector3();
@@ -42,91 +37,53 @@ export function Model({ glbUrl, position, entranceOrder = 0, modelIndex = 0, onD
     const maxDim = Math.max(size.x, size.y, size.z);
     const targetSize = 2;
     const scaleMultiplier = maxDim > 0 ? targetSize / maxDim : 1;
-    
-    console.log(`Model ${modelIndex} normalization:`, { maxDim, scaleMultiplier });
+  
     return scaleMultiplier;
-  }, [clonedScene, modelIndex]);
+  }, [clonedScene]);
 
   const baseScale: number = normalizedScale * 0.3;
 
-  // Convert 2D image coordinates to 3D world coordinates
-  const convert2DTo3D = useCallback((imagePos: [number, number]): [number, number, number] => {
+  const convert2DTo3D = (imagePos: [number, number]): [number, number, number] => {
     const x3d = (imagePos[0] / 800) * 8 - 4;
     const z3d = (imagePos[1] / 600) * 6 - 3;
     return [x3d, 0.2, z3d];
-  }, []);
+  };
 
-  // Convert 3D coordinates back to 2D image coordinates
   const convert3DTo2D = useCallback((pos3d: [number, number, number]): [number, number] => {
     const imageX = ((pos3d[0] + 4) / 8) * 800;
     const imageY = ((pos3d[2] + 3) / 6) * 600;
     return [Math.round(imageX), Math.round(imageY)];
   }, []);
 
-  // Set initial position and animate entrance
+  const position3D = convert2DTo3D(position);
+
   useEffect(() => {
-    if (!meshRef.current) return;
+    if (meshRef.current) {
+      meshRef.current.position.set(position3D[0], position3D[1], position3D[2]);
+      meshRef.current.scale.set(baseScale, baseScale, baseScale);
 
-    // Initialize start time on first mount
-    if (animationStartTimeRef.current === null) {
-      animationStartTimeRef.current = Date.now();
+      if (!animationPlayedRef.current && gltf.animations && gltf.animations.length > 0) {
+        const mixer = new AnimationMixer(meshRef.current);
+        animationMixerRef.current = mixer;
+                gltf.animations.forEach((clip) => {
+          mixer.clipAction(clip).play();
+        });
+        
+        animationPlayedRef.current = true;
+      }
     }
-
-    // Animate position and scale from corner to final position
-    const animate = () => {
-      if (!meshRef.current) return;
-
-      const now = Date.now();
-      const elapsedTime = now - (animationStartTimeRef.current || 0);
-      
-      // Wait for animation delay (stagger effect)
-      if (elapsedTime < ANIMATION_DELAY) {
-        // During delay, start at corner (top-left) with tiny scale
-        meshRef.current.position.set(-4, 0.2, -3); // Top-left corner
-        meshRef.current.scale.set(0, 0, 0); // Start invisible
-        requestAnimationFrame(animate);
-        return;
-      }
-
-      // Calculate progress after delay
-      const animationElapsed = elapsedTime - ANIMATION_DELAY;
-      const progress = Math.min(animationElapsed / ANIMATION_DURATION, 1);
-
-      // Final 3D position
-      const finalPos = convert2DTo3D(position);
-      
-      // Ease-out animation (cubic easing for smooth deceleration)
-      const easeProgress = 1 - Math.pow(1 - progress, 3);
-
-      // Animate from corner to final position
-      meshRef.current.position.set(
-        -4 + (finalPos[0] + 4) * easeProgress, // Interpolate X from -4 to final
-        0.2,
-        -3 + (finalPos[2] + 3) * easeProgress  // Interpolate Z from -3 to final
-      );
-
-      // Animate scale from tiny to base scale
-      const animatedScale = baseScale * easeProgress;
-      meshRef.current.scale.set(animatedScale, animatedScale, animatedScale);
-
-      // Continue animation until complete
-      if (progress < 1) {
-        requestAnimationFrame(animate);
-      } else {
-        // Animation complete, set final values
-        meshRef.current.position.set(finalPos[0], finalPos[1], finalPos[2]);
-        meshRef.current.scale.set(baseScale, baseScale, baseScale);
-      }
-    };
-
-    animate();
-  }, [baseScale, position, modelIndex, convert2DTo3D, ANIMATION_DELAY, ANIMATION_DURATION]);
+  }, [baseScale, position3D, gltf.animations]);
 
   const handlePointerDown = () => {
     setIsDragging(true);
   };
 
-  // Add event listeners
+  useFrame(() => {
+    if (animationMixerRef.current) {
+      animationMixerRef.current.update(0.016); // ~60fps
+    }
+  });
+
   useEffect(() => {
     if (!isDragging) return;
 
@@ -137,16 +94,15 @@ export function Model({ glbUrl, position, entranceOrder = 0, modelIndex = 0, onD
       if (!meshRef.current) return;
 
       const rect = canvas.getBoundingClientRect();
-      // Map canvas coordinates to image coordinates (0-800, 0-600)
-      const imageX = (e.clientX - rect.left) / rect.width * 800;
-      const imageY = (e.clientY - rect.top) / rect.height * 600;
+      const x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      const y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
 
-      // Convert image coordinates to 3D world coordinates
-      const x3d = (imageX / 800) * 8 - 4;
-      const z3d = (imageY / 600) * 6 - 3;
+      const scale = Math.tan(Math.PI / 6);
+      const worldX = x * scale * 8;
+      const worldZ = y * scale * 6;
 
-      meshRef.current.position.x = x3d;
-      meshRef.current.position.z = z3d;
+      meshRef.current.position.x = worldX;
+      meshRef.current.position.z = worldZ;
     };
 
     const handleUp = () => {
@@ -157,7 +113,6 @@ export function Model({ glbUrl, position, entranceOrder = 0, modelIndex = 0, onD
           meshRef.current.position.y,
           meshRef.current.position.z,
         ]);
-        console.log('Model dropped at 2D position:', newPos2D);
         onDragEnd(newPos2D);
       }
     };

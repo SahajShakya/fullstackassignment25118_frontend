@@ -1,0 +1,35 @@
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+COPY package*.json ./
+
+RUN npm install
+
+COPY . .
+
+# Use build arguments for Vite variables
+ARG VITE_GRAPHQL_URL
+ARG VITE_WS_GRAPHQL_URL
+ARG VITE_WS_URL
+ARG VITE_API_URL
+
+# Set them as environment variables so Vite can pick them up at build
+ENV VITE_GRAPHQL_URL=$VITE_GRAPHQL_URL
+ENV VITE_WS_GRAPHQL_URL=$VITE_WS_GRAPHQL_URL
+ENV VITE_WS_URL=$VITE_WS_URL
+ENV VITE_API_URL=$VITE_API_URL
+ENV NODE_ENV=production
+RUN npm run build
+
+FROM node:20-alpine
+
+WORKDIR /app
+
+RUN npm install -g serve
+
+COPY --from=builder /app/dist ./dist
+
+EXPOSE 3000
+
+CMD ["serve", "-s", "dist", "-l", "3000"]

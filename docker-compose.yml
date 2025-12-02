@@ -1,0 +1,22 @@
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    image: sazshakya/frontendassignment:latest
+    container_name: assignment-frontend
+    ports:
+      - "4040:3000"   
+    env_file:
+      - .env
+    environment:
+      - VITE_GRAPHQL_URL=${VITE_GRAPHQL_URL:-http://localhost:9090/graphql}
+      - VITE_WS_GRAPHQL_URL=${VITE_WS_GRAPHQL_URL:-ws://localhost:9090/graphql}
+      - VITE_WS_URL=${VITE_WS_URL:-ws://localhost:9090/api/ws}
+      - VITE_API_URL=${VITE_API_URL:-http://localhost:9090}
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

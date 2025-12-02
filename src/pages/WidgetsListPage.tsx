@@ -120,7 +120,10 @@ export function WidgetsListPage() {
         {/* Empty State */}
         {!loading && widgets.length === 0 && (
           <Card className="p-8 text-center">
-            <p className="text-muted-foreground">No widgets available yet</p>
+            <p className="text-muted-foreground mb-4">No widgets available yet</p>
+            <Button onClick={() => navigate('/widget')}>
+              Install Widgets
+            </Button>
           </Card>
         )}
 

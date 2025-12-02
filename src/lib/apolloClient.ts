@@ -5,7 +5,7 @@ import { getMainDefinition } from '@apollo/client/utilities';
 import { setContext } from '@apollo/client/link/context';
 
 const httpLink = new HttpLink({
-  uri: import.meta.env.VITE_GRAPHQL_URL || 'http://localhost:8000/graphql',
+  uri: import.meta.env.VITE_GRAPHQL_URL || 'http://139.59.120.168:9090/graphql',
   credentials: 'include', 
 });
 
@@ -20,9 +20,15 @@ const authLink = setContext((_, { headers }) => {
   };
 });
 
+// Convert http:// to ws:// for WebSocket
+const getWsUrl = () => {
+  const url = import.meta.env.VITE_GRAPHQL_URL || 'http://139.59.120.168:9090/graphql';
+  return url.replace(/^http:\/\//, 'ws://').replace(/^https:\/\//, 'wss://');
+};
+
 const wsLink = new GraphQLWsLink(
   createClient({
-    url: import.meta.env.VITE_WS_GRAPHQL_URL || 'ws://localhost:8000/graphql',
+    url: getWsUrl(),
     connectionParams: () => ({
       Authorization: `Bearer ${localStorage.getItem('token') || ''}`,
     }),
